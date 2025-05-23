@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Buscador en mis sitios</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      max-width: 500px;
+      margin: auto;
+    }
+    input, button {
+      padding: 0.5rem;
+      font-size: 1rem;
+      width: 100%;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h2>Buscador en La Bibliateca y Guardino</h2>
+  <input type="text" id="query" placeholder="Buscar palabra o frase...">
+  <button onclick="buscar()">Buscar</button>
+
+  <script>
+    function buscar() {
+      const palabra = document.getElementById("query").value.trim();
+      if (!palabra) return alert("Escribe una palabra para buscar.");
+      const dominio1 = "site:labibliateca.github.io";
+      const dominio2 = "site:guardino.github.io";
+      const filtro = `${dominio1} OR ${dominio2} filetype:html OR filetype:txt`;
+      const url = "https://www.google.com/search?q=" + encodeURIComponent(`${filtro} ${palabra}`);
+      window.open(url, "_blank");
+    }
+  </script>
+</body>
+</html>
