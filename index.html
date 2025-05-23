@@ -2,36 +2,71 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Buscador en mis sitios</title>
+  <title>Buscador de textos</title>
+  <script src="https://unpkg.com/lunr/lunr.js"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 2rem;
-      max-width: 500px;
-      margin: auto;
-    }
-    input, button {
-      padding: 0.5rem;
-      font-size: 1rem;
-      width: 100%;
-      margin-top: 1rem;
-    }
+    body { font-family: sans-serif; padding: 2rem; max-width: 700px; margin: auto; }
+    input, button { padding: 0.5rem; font-size: 1rem; width: 100%; margin: 0.5rem 0; }
+    #resultados p { margin-bottom: 1rem; }
   </style>
 </head>
 <body>
-  <h2>Buscador en La Bibliateca y Guardino</h2>
-  <input type="text" id="query" placeholder="Buscar palabra o frase...">
+  <h2>Buscador en archivos de La Bibliateca</h2>
+  <input type="text" id="busqueda" placeholder="Escribe una palabra...">
   <button onclick="buscar()">Buscar</button>
+  <div id="resultados"></div>
 
   <script>
+    const rutaBase = "https://labibliateca.github.io/main/";
+    const listaArchivo = "archivos.txt";
+
+    let documentos = [];
+    let indice;
+
+    // Cargar la lista de archivos
+    fetch(rutaBase + listaArchivo)
+      .then(resp => resp.text())
+      .then(texto => {
+        const archivos = texto.split("\n")
+          .map(l => l.trim())
+          .filter(l => l && (l.endsWith(".txt") || l.endsWith(".html")));
+
+        return Promise.all(
+          archivos.map(nombre =>
+            fetch(rutaBase + nombre)
+              .then(resp => resp.ok ? resp.text() : "")
+              .then(texto => ({ nombre, url: rutaBase + nombre, texto }))
+          )
+        );
+      })
+      .then(resultados => {
+        documentos = resultados;
+        indice = lunr(function () {
+          this.ref('url');
+          this.field('texto');
+          documentos.forEach(doc => {
+            this.add({ url: doc.url, texto: doc.texto });
+          });
+        });
+      })
+      .catch(error => {
+        console.error("Error cargando archivos:", error);
+        document.getElementById("resultados").innerHTML = "<p>Error al cargar los archivos.</p>";
+      });
+
     function buscar() {
-      const palabra = document.getElementById("query").value.trim();
-      if (!palabra) return alert("Escribe una palabra para buscar.");
-      const dominio1 = "site:labibliateca.github.io";
-      const dominio2 = "site:guardino.github.io";
-      const filtro = `${dominio1} OR ${dominio2} filetype:html OR filetype:txt`;
-      const url = "https://www.google.com/search?q=" + encodeURIComponent(`${filtro} ${palabra}`);
-      window.open(url, "_blank");
+      const query = document.getElementById("busqueda").value.trim();
+      if (!query || !indice) return;
+
+      const resultados = indice.search(query);
+      const html = resultados.map(r => {
+        const doc = documentos.find(d => d.url === r.ref);
+        const pos = doc.texto.toLowerCase().indexOf(query.toLowerCase());
+        const contexto = doc.texto.substring(Math.max(0, pos - 50), pos + 100);
+        return `<p><a href="${doc.url}" target="_blank">${doc.nombre}</a><br>...${contexto}...</p>`;
+      }).join("");
+
+      document.getElementById("resultados").innerHTML = html || "<p>No se encontraron coincidencias.</p>";
     }
   </script>
 </body>
